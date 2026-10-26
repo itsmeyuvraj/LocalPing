@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <!-- Incoming Network Connections (Listener) -->
+    <key>com.apple.security.network.server</key>
+    <true/>
+
+    <!-- Outgoing Network Connections (Client Transfers) -->
+    <key>com.apple.security.network.client</key>
+    <true/>
+
+    <!-- User-Selected Files Read/Write (Drop Target & Open Panel) -->
+    <key>com.apple.security.files.user-selected.read-write</key>
+    <true/>
+
+    <!-- Downloads Directory Access (Saving dropped files) -->
+    <key>com.apple.security.files.downloads.read-write</key>
+    <true/>
+
+    <!-- Microphone Audio Input -->
+    <key>com.apple.security.device.audio-input</key>
+    <true/>
+</dict>
+</plist>

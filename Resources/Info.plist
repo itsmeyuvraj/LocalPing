@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <!-- Menu Bar Only (Agent app without Dock icon) -->
+    <key>LSUIElement</key>
+    <true/>
+
+    <!-- App Metadata -->
+    <key>CFBundleIdentifier</key>
+    <string>com.localping.macos</string>
+    <key>CFBundleName</key>
+    <string>LocalPing</string>
+    <key>CFBundleExecutable</key>
+    <string>LocalPing</string>
+    <key>CFBundlePackageType</key>
+    <string>APPL</string>
+    <key>CFBundleShortVersionString</key>
+    <string>1.0.0</string>
+    <key>CFBundleVersion</key>
+    <string>1</string>
+    <key>LSMinimumSystemVersion</key>
+    <string>14.0</string>
+
+    <!-- Privacy: Local Network & Audio Access -->
+    <key>NSLocalNetworkUsageDescription</key>
+    <string>LocalPing needs access to your local network to discover nearby peers and transfer files via Bonjour.</string>
+    <key>NSMicrophoneUsageDescription</key>
+    <string>LocalPing needs microphone access for push-to-talk voice streaming with nearby peers on your local network.</string>
+
+    <!-- Bonjour Service Registrations -->
+    <key>NSBonjourServices</key>
+    <array>
+        <string>_localping._tcp</string>
+    </array>
+</dict>
+</plist>
