@@ -236,5 +236,15 @@ struct LocalPingTests {
         #expect(msg1.relativeDateHeader == "Today")
         #expect(msg1.isSameDay(as: msg2.timestamp))
     }
+
+    @Test("ChatRoomManager clearHistory empties messages array")
+    @MainActor
+    func testClearHistory() {
+        let mgr = ChatRoomManager.shared
+        mgr.sendMessage(content: "Temp message")
+        #expect(!mgr.messages.isEmpty)
+        mgr.clearHistory()
+        #expect(mgr.messages.isEmpty)
+    }
 }
 

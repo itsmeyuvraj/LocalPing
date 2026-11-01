@@ -19,6 +19,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         self.menuController = MenuController(networkManager: network)
 
         network.start()
+
+        if CommandLine.arguments.contains("--open-chat") {
+            ChatRoomManager.shared.openChatWindow()
+        }
     }
 
     func applicationWillTerminate(_ notification: Notification) {
@@ -26,6 +30,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
+        ChatRoomManager.shared.openChatWindow()
+        return true
+    }
+
+    func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool {
         return false
     }
 

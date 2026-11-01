@@ -6,7 +6,6 @@ public struct ChatRoomView: View {
     @State private var inputText: String = ""
     @State private var isSnippetMode: Bool = false
     @State private var selectedLanguage: SyntaxLanguage = .swift
-    @State private var showClearConfirmation: Bool = false
     @State private var searchQuery: String = ""
     @State private var isSearchActive: Bool = false
     @State private var showPeersPopover: Bool = false
@@ -58,18 +57,6 @@ public struct ChatRoomView: View {
             }
         }
         .frame(minWidth: 560, minHeight: 460)
-        .confirmationDialog(
-            "Clear entire chat history?",
-            isPresented: $showClearConfirmation,
-            titleVisibility: .visible
-        ) {
-            Button("Clear All Messages", role: .destructive) {
-                chatManager.clearHistory()
-            }
-            Button("Cancel", role: .cancel) {}
-        } message: {
-            Text("This will permanently remove the chat history from your local session. This cannot be undone.")
-        }
     }
 
     // MARK: - Header Bar
@@ -188,7 +175,7 @@ public struct ChatRoomView: View {
 
                 // Clear History
                 Button {
-                    showClearConfirmation = true
+                    promptClearHistory()
                 } label: {
                     Image(systemName: "trash")
                         .font(.system(size: 13, weight: .medium))
@@ -330,10 +317,11 @@ public struct ChatRoomView: View {
                         emptyStateView
                     }
                 } else {
+                    let currentMessages = filteredMessages
                     LazyVStack(spacing: 4) {
-                        ForEach(Array(filteredMessages.enumerated()), id: \.element.id) { index, message in
+                        ForEach(Array(currentMessages.enumerated()), id: \.element.id) { index, message in
                             let isLocal = isLocalMessage(message)
-                            let previousMessage = index > 0 ? filteredMessages[index - 1] : nil
+                            let previousMessage = index > 0 && index - 1 < currentMessages.count ? currentMessages[index - 1] : nil
                             let showDateDivider = previousMessage == nil || !message.isSameDay(as: previousMessage!.timestamp)
                             let isConsecutive = previousMessage != nil && message.isConsecutive(after: previousMessage!)
 
@@ -349,7 +337,9 @@ public struct ChatRoomView: View {
                                     isLocal: isLocal,
                                     isConsecutive: isConsecutive && !showDateDivider,
                                     onDelete: {
-                                        chatManager.deleteMessage(id: message.id)
+                                        withAnimation(.easeOut(duration: 0.2)) {
+                                            chatManager.deleteMessage(id: message.id)
+                                        }
                                     }
                                 )
                                 .id(message.id)
@@ -735,6 +725,31 @@ public struct ChatRoomView: View {
             if response == .OK, let url = savePanel.url {
                 try? data.write(to: url)
                 NSSound(named: "Glass")?.play()
+            }
+        }
+    }
+
+    private func promptClearHistory() {
+        guard let window = NSApp.windows.first(where: { $0.title == "Subnet Chat" }) ?? NSApp.keyWindow else {
+            withAnimation(.easeOut(duration: 0.2)) {
+                chatManager.clearHistory()
+            }
+            return
+        }
+
+        let alert = NSAlert()
+        alert.messageText = "Clear entire chat history?"
+        alert.informativeText = "This will permanently remove the chat history from your local session. This cannot be undone."
+        alert.alertStyle = .critical
+        let clearButton = alert.addButton(withTitle: "Clear All Messages")
+        clearButton.hasDestructiveAction = true
+        alert.addButton(withTitle: "Cancel")
+
+        alert.beginSheetModal(for: window) { response in
+            if response == .alertFirstButtonReturn {
+                withAnimation(.easeOut(duration: 0.2)) {
+                    chatManager.clearHistory()
+                }
             }
         }
     }
