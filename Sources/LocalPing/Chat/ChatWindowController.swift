@@ -33,6 +33,9 @@ public final class ChatWindowController: NSWindowController, NSWindowDelegate {
         window.title = "Subnet Chat"
         window.titlebarAppearsTransparent = true
         window.titleVisibility = .hidden
+        window.isOpaque = false
+        window.backgroundColor = .clear
+        window.hasShadow = true
         window.isMovableByWindowBackground = true
         window.minSize = NSSize(width: 560, height: 460)
         window.isReleasedWhenClosed = false
