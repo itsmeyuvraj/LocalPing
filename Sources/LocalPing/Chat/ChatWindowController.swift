@@ -42,8 +42,20 @@ public final class ChatWindowController: NSWindowController, NSWindowDelegate {
         window.delegate = self
         window.center()
 
+        // Root AppKit Visual Effect View for true behind-window desktop blur
+        let visualEffectView = NSVisualEffectView(frame: NSRect(x: 0, y: 0, width: 800, height: 620))
+        visualEffectView.material = .hudWindow
+        visualEffectView.blendingMode = .behindWindow
+        visualEffectView.state = .active
+        visualEffectView.autoresizingMask = [.width, .height]
+
         let rootView = ChatRoomView()
-        window.contentView = NSHostingView(rootView: rootView)
+        let hostingView = NSHostingView(rootView: rootView)
+        hostingView.frame = visualEffectView.bounds
+        hostingView.autoresizingMask = [.width, .height]
+
+        visualEffectView.addSubview(hostingView)
+        window.contentView = visualEffectView
 
         self.chatWindow = window
         self.window = window
@@ -53,6 +65,8 @@ public final class ChatWindowController: NSWindowController, NSWindowDelegate {
     }
 
     public func windowWillClose(_ notification: Notification) {
+        self.chatWindow = nil
+        self.window = nil
         ChatRoomManager.shared.chatWindowDidClose()
     }
 }

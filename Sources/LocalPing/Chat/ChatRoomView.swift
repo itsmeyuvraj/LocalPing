@@ -1,40 +1,6 @@
 import SwiftUI
 import AppKit
 
-// MARK: - Native Liquid Glass Visual Effect
-
-public struct VisualEffectBackground: NSViewRepresentable {
-    public var material: NSVisualEffectView.Material
-    public var blendingMode: NSVisualEffectView.BlendingMode
-    public var state: NSVisualEffectView.State
-
-    public init(
-        material: NSVisualEffectView.Material = .underWindowBackground,
-        blendingMode: NSVisualEffectView.BlendingMode = .behindWindow,
-        state: NSVisualEffectView.State = .active
-    ) {
-        self.material = material
-        self.blendingMode = blendingMode
-        self.state = state
-    }
-
-    public func makeNSView(context: Context) -> NSVisualEffectView {
-        let view = NSVisualEffectView()
-        view.material = material
-        view.blendingMode = blendingMode
-        view.state = state
-        return view
-    }
-
-    public func updateNSView(_ nsView: NSVisualEffectView, context: Context) {
-        nsView.material = material
-        nsView.blendingMode = blendingMode
-        nsView.state = state
-    }
-}
-
-// MARK: - Chat Room View
-
 public struct ChatRoomView: View {
     @State private var chatManager = ChatRoomManager.shared
     @State private var inputText: String = ""
@@ -61,27 +27,19 @@ public struct ChatRoomView: View {
 
     public var body: some View {
         ZStack {
-            // 1. Core Translucent Behind-Window Backdrop (Liquid Glass / Frosted Acrylic)
-            VisualEffectBackground(
-                material: .underWindowBackground,
-                blendingMode: .behindWindow,
-                state: .active
-            )
-            .ignoresSafeArea()
-
-            // 2. Liquid Glass Ambient Sheen Gradient
+            // 1. Ambient Liquid Glass Refraction Sheen
             LinearGradient(
                 colors: [
-                    Color.cyan.opacity(0.04),
+                    Color.cyan.opacity(0.12),
                     Color.clear,
-                    Color.blue.opacity(0.04)
+                    Color.purple.opacity(0.08)
                 ],
                 startPoint: .topLeading,
                 endPoint: .bottomTrailing
             )
             .ignoresSafeArea()
 
-            // 3. Main Chat Interface
+            // 2. Main Chat Interface
             VStack(spacing: 0) {
                 // Header Toolbar
                 chatHeaderView
@@ -92,16 +50,10 @@ public struct ChatRoomView: View {
                         .transition(.move(edge: .top).combined(with: .opacity))
                 }
 
-                Divider()
-                    .opacity(0.3)
-
-                // Message Scroll Feed
+                // Messages Feed
                 messagesFeedView
 
-                Divider()
-                    .opacity(0.3)
-
-                // Floating Liquid Glass Input Bar
+                // Floating Liquid Glass Composer
                 chatComposerView
             }
         }
@@ -138,9 +90,9 @@ public struct ChatRoomView: View {
                         .frame(width: 30, height: 30)
                         .overlay(
                             RoundedRectangle(cornerRadius: 8, style: .continuous)
-                                .stroke(Color.white.opacity(0.25), lineWidth: 0.5)
+                                .stroke(Color.white.opacity(0.35), lineWidth: 0.5)
                         )
-                        .shadow(color: Color.accentColor.opacity(0.3), radius: 5, y: 1)
+                        .shadow(color: Color.accentColor.opacity(0.35), radius: 6, y: 1)
 
                     Image(systemName: "bubble.left.and.bubble.right.fill")
                         .font(.system(size: 13, weight: .semibold))
@@ -151,7 +103,7 @@ public struct ChatRoomView: View {
                     HStack(spacing: 6) {
                         Text("Subnet Chat")
                             .font(.system(size: 13, weight: .semibold))
-                            .foregroundColor(.primary)
+                            .foregroundColor(.white)
 
                         // Online peers status pill
                         let peerCount = chatManager.networkManager?.peers.count ?? 0
@@ -165,15 +117,14 @@ public struct ChatRoomView: View {
 
                                 Text(peerCount > 0 ? "\(peerCount) online" : "Listening...")
                                     .font(.system(size: 10, weight: .medium))
-                                    .foregroundColor(.secondary)
+                                    .foregroundColor(.white.opacity(0.8))
                             }
-                            .padding(.horizontal, 7)
-                            .padding(.vertical, 2.5)
-                            .background(.ultraThinMaterial)
-                            .background(Color.primary.opacity(0.04))
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 3)
+                            .background(Color.white.opacity(0.08))
                             .clipShape(Capsule())
                             .overlay(
-                                Capsule().stroke(Color.white.opacity(0.18), lineWidth: 0.5)
+                                Capsule().stroke(Color.white.opacity(0.25), lineWidth: 0.5)
                             )
                         }
                         .buttonStyle(.plain)
@@ -184,7 +135,7 @@ public struct ChatRoomView: View {
 
                     Text("Zero-cloud P2P broadcast channel")
                         .font(.system(size: 10))
-                        .foregroundColor(.secondary)
+                        .foregroundColor(.white.opacity(0.6))
                 }
             }
 
@@ -205,14 +156,13 @@ public struct ChatRoomView: View {
                 } label: {
                     Image(systemName: isSearchActive ? "magnifyingglass.circle.fill" : "magnifyingglass")
                         .font(.system(size: 13, weight: .medium))
-                        .foregroundColor(isSearchActive ? .accentColor : .secondary)
+                        .foregroundColor(isSearchActive ? .cyan : .white.opacity(0.8))
                         .frame(width: 28, height: 28)
-                        .background(.ultraThinMaterial)
-                        .background(Color.primary.opacity(isSearchActive ? 0.08 : 0.03))
+                        .background(Color.white.opacity(isSearchActive ? 0.15 : 0.06))
                         .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
                         .overlay(
                             RoundedRectangle(cornerRadius: 6, style: .continuous)
-                                .stroke(Color.white.opacity(0.15), lineWidth: 0.5)
+                                .stroke(Color.white.opacity(0.2), lineWidth: 0.5)
                         )
                 }
                 .buttonStyle(.plain)
@@ -224,14 +174,13 @@ public struct ChatRoomView: View {
                 } label: {
                     Image(systemName: "square.and.arrow.up")
                         .font(.system(size: 13, weight: .medium))
-                        .foregroundColor(.secondary)
+                        .foregroundColor(.white.opacity(0.8))
                         .frame(width: 28, height: 28)
-                        .background(.ultraThinMaterial)
-                        .background(Color.primary.opacity(0.03))
+                        .background(Color.white.opacity(0.06))
                         .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
                         .overlay(
                             RoundedRectangle(cornerRadius: 6, style: .continuous)
-                                .stroke(Color.white.opacity(0.15), lineWidth: 0.5)
+                                .stroke(Color.white.opacity(0.2), lineWidth: 0.5)
                         )
                 }
                 .buttonStyle(.plain)
@@ -243,14 +192,13 @@ public struct ChatRoomView: View {
                 } label: {
                     Image(systemName: "trash")
                         .font(.system(size: 13, weight: .medium))
-                        .foregroundColor(.secondary)
+                        .foregroundColor(.white.opacity(0.8))
                         .frame(width: 28, height: 28)
-                        .background(.ultraThinMaterial)
-                        .background(Color.primary.opacity(0.03))
+                        .background(Color.white.opacity(0.06))
                         .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
                         .overlay(
                             RoundedRectangle(cornerRadius: 6, style: .continuous)
-                                .stroke(Color.white.opacity(0.15), lineWidth: 0.5)
+                                .stroke(Color.white.opacity(0.2), lineWidth: 0.5)
                         )
                 }
                 .buttonStyle(.plain)
@@ -261,7 +209,13 @@ public struct ChatRoomView: View {
         .padding(.trailing, 16)
         .padding(.vertical, 10)
         .frame(height: 52)
-        .background(.ultraThinMaterial)
+        .background(Color.white.opacity(0.04))
+        .overlay(
+            Rectangle()
+                .frame(height: 0.5)
+                .foregroundColor(Color.white.opacity(0.15)),
+            alignment: .bottom
+        )
     }
 
     // MARK: - Search Bar View
@@ -270,11 +224,12 @@ public struct ChatRoomView: View {
         HStack(spacing: 8) {
             Image(systemName: "magnifyingglass")
                 .font(.system(size: 12))
-                .foregroundColor(.secondary)
+                .foregroundColor(.white.opacity(0.7))
 
             TextField("Filter messages by text, sender, or language...", text: $searchQuery)
                 .textFieldStyle(.plain)
                 .font(.system(size: 12))
+                .foregroundColor(.white)
                 .focused($isSearchFocused)
 
             if !searchQuery.isEmpty {
@@ -283,13 +238,13 @@ public struct ChatRoomView: View {
                 } label: {
                     Image(systemName: "xmark.circle.fill")
                         .font(.system(size: 12))
-                        .foregroundColor(.secondary)
+                        .foregroundColor(.white.opacity(0.7))
                 }
                 .buttonStyle(.plain)
 
                 Text("\(filteredMessages.count) found")
                     .font(.system(size: 10, weight: .medium))
-                    .foregroundColor(.secondary)
+                    .foregroundColor(.white.opacity(0.7))
             }
 
             Button("Done") {
@@ -300,11 +255,17 @@ public struct ChatRoomView: View {
             }
             .buttonStyle(.borderless)
             .font(.system(size: 11, weight: .medium))
+            .foregroundColor(.cyan)
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 7)
-        .background(.ultraThinMaterial)
-        .background(Color.primary.opacity(0.02))
+        .background(Color.black.opacity(0.25))
+        .overlay(
+            Rectangle()
+                .frame(height: 0.5)
+                .foregroundColor(Color.white.opacity(0.12)),
+            alignment: .bottom
+        )
     }
 
     // MARK: - Online Peers Popover View
@@ -355,7 +316,6 @@ public struct ChatRoomView: View {
             }
         }
         .padding(12)
-        .background(.ultraThinMaterial)
     }
 
     // MARK: - Messages Feed
@@ -421,24 +381,23 @@ public struct ChatRoomView: View {
     private func dateDividerView(dateString: String) -> some View {
         HStack(spacing: 12) {
             Rectangle()
-                .fill(Color.primary.opacity(0.12))
+                .fill(Color.white.opacity(0.15))
                 .frame(height: 0.5)
 
             Text(dateString)
                 .font(.system(size: 11, weight: .medium))
-                .foregroundColor(.secondary)
+                .foregroundColor(.white.opacity(0.8))
                 .padding(.horizontal, 10)
                 .padding(.vertical, 3)
-                .background(.ultraThinMaterial)
-                .background(Color.primary.opacity(0.04))
+                .background(Color.white.opacity(0.08))
                 .clipShape(Capsule())
                 .overlay(
-                    Capsule().stroke(Color.white.opacity(0.18), lineWidth: 0.5)
+                    Capsule().stroke(Color.white.opacity(0.22), lineWidth: 0.5)
                 )
-                .shadow(color: Color.black.opacity(0.05), radius: 3, y: 1)
+                .shadow(color: Color.black.opacity(0.2), radius: 3, y: 1)
 
             Rectangle()
-                .fill(Color.primary.opacity(0.12))
+                .fill(Color.white.opacity(0.15))
                 .frame(height: 0.5)
         }
     }
@@ -449,25 +408,32 @@ public struct ChatRoomView: View {
         VStack(spacing: 14) {
             ZStack {
                 Circle()
-                    .fill(Color.accentColor.opacity(0.12))
-                    .frame(width: 64, height: 64)
-                    .overlay(
-                        Circle().stroke(Color.white.opacity(0.2), lineWidth: 0.5)
+                    .fill(
+                        LinearGradient(
+                            colors: [Color.accentColor.opacity(0.25), Color.cyan.opacity(0.10)],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
                     )
+                    .frame(width: 68, height: 68)
+                    .overlay(
+                        Circle().stroke(Color.white.opacity(0.25), lineWidth: 0.75)
+                    )
+                    .shadow(color: Color.accentColor.opacity(0.3), radius: 8, y: 2)
 
                 Image(systemName: "bubble.left.and.bubble.right.fill")
-                    .font(.system(size: 26))
-                    .foregroundColor(.accentColor)
+                    .font(.system(size: 28))
+                    .foregroundColor(.white)
             }
             .padding(.bottom, 4)
 
             Text("Subnet Chat Room")
-                .font(.system(size: 15, weight: .semibold))
-                .foregroundColor(.primary)
+                .font(.system(size: 16, weight: .semibold))
+                .foregroundColor(.white)
 
             Text("Broadcast messages and formatted code snippets directly to all discovered local devices over zero-cloud Bonjour.")
                 .font(.system(size: 12))
-                .foregroundColor(.secondary)
+                .foregroundColor(.white.opacity(0.75))
                 .multilineTextAlignment(.center)
                 .frame(maxWidth: 360)
                 .lineSpacing(2)
@@ -488,12 +454,12 @@ public struct ChatRoomView: View {
         VStack(spacing: 10) {
             Image(systemName: "magnifyingglass")
                 .font(.system(size: 30))
-                .foregroundColor(.secondary.opacity(0.5))
+                .foregroundColor(.white.opacity(0.5))
                 .padding(.bottom, 4)
 
             Text("No Messages Match \"\(searchQuery)\"")
                 .font(.system(size: 13, weight: .semibold))
-                .foregroundColor(.primary)
+                .foregroundColor(.white)
 
             Button("Clear Search") {
                 searchQuery = ""
@@ -516,13 +482,13 @@ public struct ChatRoomView: View {
         } label: {
             Text(label)
                 .font(.system(size: 11, weight: .medium))
-                .padding(.horizontal, 10)
+                .foregroundColor(.white.opacity(0.9))
+                .padding(.horizontal, 11)
                 .padding(.vertical, 5)
-                .background(.ultraThinMaterial)
-                .background(Color.primary.opacity(0.04))
+                .background(Color.white.opacity(0.08))
                 .clipShape(Capsule())
                 .overlay(
-                    Capsule().stroke(Color.white.opacity(0.2), lineWidth: 0.5)
+                    Capsule().stroke(Color.white.opacity(0.25), lineWidth: 0.5)
                 )
         }
         .buttonStyle(.plain)
@@ -544,19 +510,19 @@ public struct ChatRoomView: View {
                 Text("Paste Clipboard")
                     .font(.system(size: 11, weight: .medium))
             }
-            .padding(.horizontal, 10)
+            .foregroundColor(.white.opacity(0.9))
+            .padding(.horizontal, 11)
             .padding(.vertical, 5)
-            .background(.ultraThinMaterial)
-            .background(Color.primary.opacity(0.04))
+            .background(Color.white.opacity(0.08))
             .clipShape(Capsule())
             .overlay(
-                Capsule().stroke(Color.white.opacity(0.2), lineWidth: 0.5)
+                Capsule().stroke(Color.white.opacity(0.25), lineWidth: 0.5)
             )
         }
         .buttonStyle(.plain)
     }
 
-    // MARK: - Composer Floating Input Bar
+    // MARK: - Composer Floating Liquid Glass Bar
 
     private var chatComposerView: some View {
         VStack(spacing: 0) {
@@ -570,7 +536,7 @@ public struct ChatRoomView: View {
 
                         Text("Snippet Language:")
                             .font(.system(size: 11, weight: .medium))
-                            .foregroundColor(.secondary)
+                            .foregroundColor(.white.opacity(0.8))
 
                         Picker("", selection: $selectedLanguage) {
                             ForEach(SyntaxLanguage.allCases, id: \.self) { lang in
@@ -585,27 +551,26 @@ public struct ChatRoomView: View {
 
                     Text("Press ⌘Return to send")
                         .font(.system(size: 10))
-                        .foregroundColor(.secondary)
+                        .foregroundColor(.white.opacity(0.6))
 
                     Button {
                         isSnippetMode = false
                     } label: {
                         Image(systemName: "xmark.circle.fill")
                             .font(.system(size: 12))
-                            .foregroundColor(.secondary)
+                            .foregroundColor(.white.opacity(0.7))
                     }
                     .buttonStyle(.plain)
                     .help("Exit Snippet Mode")
                 }
                 .padding(.horizontal, 12)
                 .padding(.vertical, 6)
-                .background(.ultraThinMaterial)
-                .background(Color.primary.opacity(0.04))
+                .background(Color.black.opacity(0.35))
                 .clipShape(UnevenRoundedRectangle(topLeadingRadius: 12, bottomLeadingRadius: 0, bottomTrailingRadius: 0, topTrailingRadius: 12, style: .continuous))
                 .overlay(
                     Rectangle()
                         .frame(height: 0.5)
-                        .foregroundColor(Color.white.opacity(0.15)),
+                        .foregroundColor(Color.white.opacity(0.18)),
                     alignment: .bottom
                 )
             }
@@ -620,13 +585,13 @@ public struct ChatRoomView: View {
                 } label: {
                     Image(systemName: isSnippetMode ? "curlybraces.square.fill" : "curlybraces")
                         .font(.system(size: 14, weight: .medium))
-                        .foregroundColor(isSnippetMode ? .accentColor : .secondary)
+                        .foregroundColor(isSnippetMode ? .cyan : .white.opacity(0.75))
                         .frame(width: 28, height: 28)
-                        .background(isSnippetMode ? Color.accentColor.opacity(0.15) : Color.primary.opacity(0.05))
+                        .background(isSnippetMode ? Color.cyan.opacity(0.2) : Color.white.opacity(0.06))
                         .clipShape(RoundedRectangle(cornerRadius: 7, style: .continuous))
                         .overlay(
                             RoundedRectangle(cornerRadius: 7, style: .continuous)
-                                .stroke(Color.white.opacity(0.18), lineWidth: 0.5)
+                                .stroke(Color.white.opacity(0.25), lineWidth: 0.5)
                         )
                 }
                 .buttonStyle(.plain)
@@ -637,7 +602,7 @@ public struct ChatRoomView: View {
                     if inputText.isEmpty {
                         Text(isSnippetMode ? "Paste or write code... (⌘Return to send)" : "Message subnet... (Return to send, ⇧Return for newline)")
                             .font(isSnippetMode ? .system(size: 12, design: .monospaced) : .system(size: 13))
-                            .foregroundColor(.secondary.opacity(0.7))
+                            .foregroundColor(.white.opacity(0.5))
                             .padding(.horizontal, 4)
                             .padding(.vertical, 6)
                             .allowsHitTesting(false)
@@ -645,6 +610,7 @@ public struct ChatRoomView: View {
 
                     TextEditor(text: $inputText)
                         .font(isSnippetMode ? .system(size: 12, design: .monospaced) : .system(size: 13))
+                        .foregroundColor(.white)
                         .scrollContentBackground(.hidden)
                         .frame(minHeight: isSnippetMode ? 72 : 32, maxHeight: 130)
                         .focused($isInputFocused)
@@ -675,25 +641,25 @@ public struct ChatRoomView: View {
                             .fill(
                                 canSend ?
                                 LinearGradient(
-                                    colors: [Color.accentColor, Color.accentColor.opacity(0.8)],
+                                    colors: [Color.cyan, Color.blue],
                                     startPoint: .topLeading,
                                     endPoint: .bottomTrailing
                                 ) :
                                 LinearGradient(
-                                    colors: [Color.primary.opacity(0.08), Color.primary.opacity(0.04)],
+                                    colors: [Color.white.opacity(0.12), Color.white.opacity(0.06)],
                                     startPoint: .topLeading,
                                     endPoint: .bottomTrailing
                                 )
                             )
                             .frame(width: 28, height: 28)
                             .overlay(
-                                Circle().stroke(Color.white.opacity(canSend ? 0.3 : 0.1), lineWidth: 0.5)
+                                Circle().stroke(Color.white.opacity(canSend ? 0.45 : 0.15), lineWidth: 0.5)
                             )
-                            .shadow(color: canSend ? Color.accentColor.opacity(0.3) : Color.clear, radius: 4, y: 1)
+                            .shadow(color: canSend ? Color.cyan.opacity(0.4) : Color.clear, radius: 6, y: 1)
 
                         Image(systemName: "arrow.up")
                             .font(.system(size: 12, weight: .bold))
-                            .foregroundColor(canSend ? .white : .secondary.opacity(0.5))
+                            .foregroundColor(canSend ? .black : .white.opacity(0.4))
                     }
                 }
                 .buttonStyle(.plain)
@@ -702,8 +668,7 @@ public struct ChatRoomView: View {
             }
             .padding(.horizontal, 10)
             .padding(.vertical, 8)
-            .background(.ultraThinMaterial)
-            .background(Color.primary.opacity(0.03))
+            .background(Color.black.opacity(0.35))
             .clipShape(
                 UnevenRoundedRectangle(
                     topLeadingRadius: isSnippetMode ? 0 : 12,
@@ -719,14 +684,14 @@ public struct ChatRoomView: View {
             RoundedRectangle(cornerRadius: 12, style: .continuous)
                 .stroke(
                     LinearGradient(
-                        colors: [Color.white.opacity(0.35), Color.white.opacity(0.10)],
+                        colors: [Color.white.opacity(0.40), Color.white.opacity(0.12)],
                         startPoint: .topLeading,
                         endPoint: .bottomTrailing
                     ),
                     lineWidth: 0.75
                 )
         )
-        .shadow(color: Color.black.opacity(0.10), radius: 10, y: 4)
+        .shadow(color: Color.black.opacity(0.3), radius: 12, y: 4)
         .padding(.horizontal, 16)
         .padding(.vertical, 12)
     }
@@ -806,9 +771,9 @@ struct ChatMessageRow: View {
                                 .foregroundColor(.white)
                         )
                         .overlay(
-                            Circle().stroke(Color.white.opacity(0.3), lineWidth: 0.5)
+                            Circle().stroke(Color.white.opacity(0.35), lineWidth: 0.5)
                         )
-                        .shadow(color: Color(hex: message.avatarColorHex).opacity(0.25), radius: 3, y: 1)
+                        .shadow(color: Color(hex: message.avatarColorHex).opacity(0.3), radius: 4, y: 1)
                 } else {
                     Color.clear
                         .frame(width: 28, height: 28)
@@ -826,7 +791,7 @@ struct ChatMessageRow: View {
 
                         Text(message.formattedTime)
                             .font(.system(size: 10))
-                            .foregroundColor(.secondary)
+                            .foregroundColor(.white.opacity(0.6))
                     }
                     .padding(.horizontal, 2)
                 }
@@ -838,7 +803,7 @@ struct ChatMessageRow: View {
                         case .text(_, let text):
                             Text(LocalizedStringKey(text))
                                 .font(.system(size: 13))
-                                .foregroundColor(isLocal ? .white : .primary)
+                                .foregroundColor(.white)
                                 .textSelection(.enabled)
                                 .padding(.horizontal, 12)
                                 .padding(.vertical, 7)
@@ -846,9 +811,9 @@ struct ChatMessageRow: View {
                                 .clipShape(bubbleShape)
                                 .overlay(bubbleBorder)
                                 .shadow(
-                                    color: isLocal ? Color.accentColor.opacity(0.22) : Color.black.opacity(0.05),
-                                    radius: isLocal ? 5 : 3,
-                                    y: 1.5
+                                    color: isLocal ? Color.cyan.opacity(0.25) : Color.black.opacity(0.25),
+                                    radius: isLocal ? 6 : 4,
+                                    y: 2
                                 )
 
                         case .code(_, let code, let language):
@@ -898,17 +863,15 @@ struct ChatMessageRow: View {
     @ViewBuilder
     private var bubbleBackground: some View {
         if isLocal {
-            // Translucent radiant liquid glass bubble
+            // Translucent radiant cyan/blue liquid glass bubble
             LinearGradient(
-                colors: [Color.accentColor.opacity(0.88), Color.accentColor.opacity(0.72)],
+                colors: [Color.cyan.opacity(0.85), Color.blue.opacity(0.75)],
                 startPoint: .topLeading,
                 endPoint: .bottomTrailing
             )
-            .background(.ultraThinMaterial)
         } else {
-            // Frosted glass incoming bubble
-            Color.primary.opacity(0.04)
-                .background(.ultraThinMaterial)
+            // Smoked frosted glass incoming bubble
+            Color.white.opacity(0.08)
         }
     }
 
@@ -928,8 +891,8 @@ struct ChatMessageRow: View {
             .stroke(
                 LinearGradient(
                     colors: isLocal ?
-                        [Color.white.opacity(0.40), Color.white.opacity(0.12)] :
-                        [Color.white.opacity(0.28), Color.white.opacity(0.08)],
+                        [Color.white.opacity(0.45), Color.white.opacity(0.15)] :
+                        [Color.white.opacity(0.30), Color.white.opacity(0.10)],
                     startPoint: .topLeading,
                     endPoint: .bottomTrailing
                 ),
@@ -955,12 +918,11 @@ struct ChatMessageRow: View {
             } label: {
                 Image(systemName: hasCopied ? "checkmark" : "doc.on.doc")
                     .font(.system(size: 10, weight: .medium))
-                    .foregroundColor(hasCopied ? .green : .secondary)
+                    .foregroundColor(hasCopied ? .green : .white.opacity(0.8))
                     .frame(width: 22, height: 22)
-                    .background(.ultraThinMaterial)
-                    .background(Color.primary.opacity(0.04))
+                    .background(Color.black.opacity(0.4))
                     .clipShape(Circle())
-                    .overlay(Circle().stroke(Color.white.opacity(0.2), lineWidth: 0.5))
+                    .overlay(Circle().stroke(Color.white.opacity(0.25), lineWidth: 0.5))
             }
             .buttonStyle(.plain)
             .help("Copy text")
@@ -970,12 +932,11 @@ struct ChatMessageRow: View {
             } label: {
                 Image(systemName: "trash")
                     .font(.system(size: 10, weight: .medium))
-                    .foregroundColor(.secondary)
+                    .foregroundColor(.white.opacity(0.8))
                     .frame(width: 22, height: 22)
-                    .background(.ultraThinMaterial)
-                    .background(Color.primary.opacity(0.04))
+                    .background(Color.black.opacity(0.4))
                     .clipShape(Circle())
-                    .overlay(Circle().stroke(Color.white.opacity(0.2), lineWidth: 0.5))
+                    .overlay(Circle().stroke(Color.white.opacity(0.25), lineWidth: 0.5))
             }
             .buttonStyle(.plain)
             .help("Delete message")
@@ -1036,16 +997,16 @@ struct CodeSnippetView: View {
 
                     Text(syntaxLanguage.displayName.uppercased())
                         .font(.system(size: 10, weight: .bold, design: .monospaced))
-                        .foregroundColor(.primary)
+                        .foregroundColor(.white)
                 }
 
                 Text("•")
                     .font(.system(size: 10))
-                    .foregroundColor(.secondary.opacity(0.5))
+                    .foregroundColor(.white.opacity(0.4))
 
                 Text("\(lines.count) \(lines.count == 1 ? "line" : "lines")")
                     .font(.system(size: 10, weight: .medium))
-                    .foregroundColor(.secondary)
+                    .foregroundColor(.white.opacity(0.6))
 
                 Spacer()
 
@@ -1059,26 +1020,24 @@ struct CodeSnippetView: View {
                         Text(hasCopied ? "Copied" : "Copy")
                             .font(.system(size: 10, weight: .medium))
                     }
-                    .foregroundColor(hasCopied ? .green : .secondary)
+                    .foregroundColor(hasCopied ? .green : .white.opacity(0.85))
                     .padding(.horizontal, 8)
                     .padding(.vertical, 3)
-                    .background(.ultraThinMaterial)
-                    .background(Color.primary.opacity(0.06))
+                    .background(Color.white.opacity(0.10))
                     .clipShape(Capsule())
                     .overlay(
-                        Capsule().stroke(Color.white.opacity(0.2), lineWidth: 0.5)
+                        Capsule().stroke(Color.white.opacity(0.25), lineWidth: 0.5)
                     )
                 }
                 .buttonStyle(.plain)
             }
             .padding(.horizontal, 12)
             .padding(.vertical, 7)
-            .background(.ultraThinMaterial)
-            .background(Color.primary.opacity(0.04))
+            .background(Color.black.opacity(0.40))
             .overlay(
                 Rectangle()
                     .frame(height: 0.5)
-                    .foregroundColor(Color.white.opacity(0.12)),
+                    .foregroundColor(Color.white.opacity(0.15)),
                 alignment: .bottom
             )
 
@@ -1089,7 +1048,7 @@ struct CodeSnippetView: View {
                         HStack(alignment: .top, spacing: 12) {
                             Text("\(index + 1)")
                                 .font(.system(size: 11, design: .monospaced))
-                                .foregroundColor(.secondary.opacity(0.45))
+                                .foregroundColor(.white.opacity(0.40))
                                 .frame(minWidth: 20, alignment: .trailing)
 
                             highlightedLine(line, language: syntaxLanguage)
@@ -1101,22 +1060,21 @@ struct CodeSnippetView: View {
                 .padding(.horizontal, 12)
                 .padding(.vertical, 10)
             }
-            .background(.ultraThinMaterial)
-            .background(Color.black.opacity(0.25))
+            .background(Color.black.opacity(0.30))
         }
         .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
         .overlay(
             RoundedRectangle(cornerRadius: 10, style: .continuous)
                 .stroke(
                     LinearGradient(
-                        colors: [Color.white.opacity(0.24), Color.white.opacity(0.06)],
+                        colors: [Color.white.opacity(0.30), Color.white.opacity(0.08)],
                         startPoint: .topLeading,
                         endPoint: .bottomTrailing
                     ),
                     lineWidth: 0.5
                 )
         )
-        .shadow(color: Color.black.opacity(0.14), radius: 8, y: 3)
+        .shadow(color: Color.black.opacity(0.25), radius: 8, y: 3)
         .frame(minWidth: 320, maxWidth: 520)
     }
 
@@ -1128,19 +1086,19 @@ struct CodeSnippetView: View {
         for token in tokens {
             switch token.type {
             case .keyword:
-                result = result + Text(token.text).foregroundColor(Color.purple).bold()
+                result = result + Text(token.text).foregroundColor(Color(red: 0.88, green: 0.45, blue: 0.88)).bold()
             case .type:
-                result = result + Text(token.text).foregroundColor(Color.teal).bold()
+                result = result + Text(token.text).foregroundColor(Color(red: 0.45, green: 0.85, blue: 0.95)).bold()
             case .string:
-                result = result + Text(token.text).foregroundColor(Color.orange)
+                result = result + Text(token.text).foregroundColor(Color(red: 0.98, green: 0.55, blue: 0.40))
             case .number:
-                result = result + Text(token.text).foregroundColor(Color(red: 0.85, green: 0.65, blue: 0.15))
+                result = result + Text(token.text).foregroundColor(Color(red: 0.95, green: 0.78, blue: 0.25))
             case .comment:
-                result = result + Text(token.text).foregroundColor(Color.secondary).italic()
+                result = result + Text(token.text).foregroundColor(Color.white.opacity(0.5)).italic()
             case .boolean:
-                result = result + Text(token.text).foregroundColor(Color.blue).bold()
+                result = result + Text(token.text).foregroundColor(Color(red: 0.40, green: 0.70, blue: 1.0)).bold()
             case .plain:
-                result = result + Text(token.text).foregroundColor(Color.primary)
+                result = result + Text(token.text).foregroundColor(.white)
             }
         }
         return result
