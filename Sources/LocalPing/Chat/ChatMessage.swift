@@ -45,6 +45,39 @@ public struct ChatMessage: Identifiable, Codable, Sendable, Equatable {
         return formatter.string(from: timestamp)
     }
 
+    public var formattedFullDate: String {
+        let formatter = DateFormatter()
+        formatter.dateStyle = .medium
+        formatter.timeStyle = .none
+        return formatter.string(from: timestamp)
+    }
+
+    public var relativeDateHeader: String {
+        let calendar = Calendar.current
+        if calendar.isDateInToday(timestamp) {
+            return "Today"
+        } else if calendar.isDateInYesterday(timestamp) {
+            return "Yesterday"
+        } else {
+            let formatter = DateFormatter()
+            formatter.dateFormat = "EEEE, MMMM d"
+            return formatter.string(from: timestamp)
+        }
+    }
+
+    public func isSameDay(as date: Date) -> Bool {
+        Calendar.current.isDate(timestamp, inSameDayAs: date)
+    }
+
+    public func isConsecutive(after previous: ChatMessage) -> Bool {
+        guard senderId == previous.senderId && senderName == previous.senderName else {
+            return false
+        }
+        // Group if sent within 3 minutes (180 seconds)
+        let diff = abs(timestamp.timeIntervalSince(previous.timestamp))
+        return diff < 180 && isSameDay(as: previous.timestamp)
+    }
+
     public var avatarInitials: String {
         let trimmed = senderName.trimmingCharacters(in: .whitespacesAndNewlines)
         let parts = trimmed.split(separator: " ")
@@ -58,14 +91,14 @@ public struct ChatMessage: Identifiable, Codable, Sendable, Equatable {
 
     public var avatarColorHex: String {
         let palette = [
-            "#00F0FF", // Cyan
-            "#BF5AF2", // Purple
-            "#FF2D55", // Hot Pink
-            "#FFD60A", // Electric Yellow
-            "#30D158", // Emerald Green
-            "#FF9F0A", // Orange
-            "#5E5CE6", // Indigo
-            "#64D2FF"  // Sky Blue
+            "#007AFF", // System Blue
+            "#5856D6", // System Indigo
+            "#AF52DE", // System Purple
+            "#FF2D55", // System Pink
+            "#FF9500", // System Orange
+            "#34C759", // System Green
+            "#00C7BE", // System Teal
+            "#32ADE6"  // System Sky
         ]
         var hash = 0
         for byte in senderName.utf8 {

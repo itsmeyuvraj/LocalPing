@@ -17,24 +17,24 @@ public final class ChatWindowController: NSWindowController, NSWindowDelegate {
 
     public func showWindow(peerCount: Int) {
         if let existing = chatWindow {
-            existing.title = "LocalPing Subnet Chat (\(peerCount) online)"
             existing.makeKeyAndOrderFront(nil)
             NSApp.activate(ignoringOtherApps: true)
             return
         }
 
         let window = NSWindow(
-            contentRect: NSRect(x: 120, y: 120, width: 760, height: 580),
+            contentRect: NSRect(x: 140, y: 140, width: 800, height: 620),
             styleMask: [.titled, .closable, .miniaturizable, .resizable, .fullSizeContentView],
             backing: .buffered,
             defer: false
         )
 
         window.identifier = NSUserInterfaceItemIdentifier("LocalPingChatWindow")
-        window.title = "LocalPing Subnet Chat"
+        window.title = "Subnet Chat"
         window.titlebarAppearsTransparent = true
-        window.titleVisibility = .visible
-        window.minSize = NSSize(width: 520, height: 420)
+        window.titleVisibility = .hidden
+        window.isMovableByWindowBackground = true
+        window.minSize = NSSize(width: 560, height: 460)
         window.isReleasedWhenClosed = false
         window.delegate = self
         window.center()

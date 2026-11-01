@@ -181,5 +181,60 @@ struct LocalPingTests {
             Issue.record("Third segment should be text")
         }
     }
+
+    @Test("Syntax highlighting correctly classifies tokens")
+    func testSyntaxHighlighting() {
+        let highlighter = SimpleSyntaxHighlighter.shared
+        let swiftLine = "import SwiftUI // Framework"
+        let swiftTokens = highlighter.highlightLine(swiftLine, language: .swift)
+
+        #expect(swiftTokens.contains { $0.text == "import" && $0.type == .keyword })
+        #expect(swiftTokens.contains { $0.text == "SwiftUI" && $0.type == .type })
+        #expect(swiftTokens.contains { $0.type == .comment })
+
+        let pythonLine = "def calculate_sum(val = 42):"
+        let pythonTokens = highlighter.highlightLine(pythonLine, language: .python)
+        #expect(pythonTokens.contains { $0.text == "def" && $0.type == .keyword })
+        #expect(pythonTokens.contains { $0.text == "42" && $0.type == .number })
+    }
+
+    @Test("ChatMessage consecutive grouping and date calculation")
+    func testChatMessageClusteringAndDates() {
+        let now = Date()
+        let msg1 = ChatMessage(
+            senderId: "user-1",
+            senderName: "Alice",
+            content: "First message",
+            timestamp: now
+        )
+
+        let msg2 = ChatMessage(
+            senderId: "user-1",
+            senderName: "Alice",
+            content: "Second message",
+            timestamp: now.addingTimeInterval(30) // 30s later
+        )
+
+        let msg3 = ChatMessage(
+            senderId: "user-2",
+            senderName: "Bob",
+            content: "Reply from Bob",
+            timestamp: now.addingTimeInterval(45)
+        )
+
+        let msg4 = ChatMessage(
+            senderId: "user-1",
+            senderName: "Alice",
+            content: "Later message",
+            timestamp: now.addingTimeInterval(300) // 5 mins later
+        )
+
+        #expect(msg2.isConsecutive(after: msg1))
+        #expect(!msg3.isConsecutive(after: msg2)) // Different sender
+        #expect(!msg4.isConsecutive(after: msg1)) // > 3 mins
+
+        #expect(msg1.relativeDateHeader == "Today")
+        #expect(msg1.isSameDay(as: msg2.timestamp))
+    }
 }
 

@@ -5,33 +5,51 @@ public struct ChatRoomView: View {
     @State private var chatManager = ChatRoomManager.shared
     @State private var inputText: String = ""
     @State private var isSnippetMode: Bool = false
-    @State private var selectedLanguage: String = "swift"
+    @State private var selectedLanguage: SyntaxLanguage = .swift
     @State private var showClearConfirmation: Bool = false
+    @State private var searchQuery: String = ""
+    @State private var isSearchActive: Bool = false
+    @State private var showPeersPopover: Bool = false
     @FocusState private var isInputFocused: Bool
-
-    private let supportedLanguages = ["swift", "json", "python", "bash", "markdown", "javascript", "html", "sql"]
+    @FocusState private var isSearchFocused: Bool
 
     public init() {}
 
+    private var filteredMessages: [ChatMessage] {
+        let query = searchQuery.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        guard !query.isEmpty else { return chatManager.messages }
+        return chatManager.messages.filter { msg in
+            msg.content.lowercased().contains(query) ||
+            msg.senderName.lowercased().contains(query) ||
+            (msg.snippetLanguage?.lowercased().contains(query) == true)
+        }
+    }
+
     public var body: some View {
         VStack(spacing: 0) {
-            // 1. Header Toolbar
+            // 1. Sleek macOS Unified Header
             chatHeaderView
 
-            Divider()
-                .background(Color.white.opacity(0.1))
+            // 2. Optional Inline Search Bar
+            if isSearchActive {
+                searchBarView
+                    .transition(.move(edge: .top).combined(with: .opacity))
+            }
 
-            // 2. Scrollable Messages Feed
+            Divider()
+                .opacity(0.5)
+
+            // 3. Scrollable Message Feed
             messagesFeedView
 
             Divider()
-                .background(Color.white.opacity(0.1))
+                .opacity(0.5)
 
-            // 3. Bottom Input Bar with Snippet formatting controls
-            chatInputBarView
+            // 4. Modern Floating Composer
+            chatComposerView
         }
-        .frame(minWidth: 520, minHeight: 420)
-        .background(Color(red: 0.11, green: 0.11, blue: 0.13))
+        .frame(minWidth: 560, minHeight: 460)
+        .background(Color(nsColor: .windowBackgroundColor))
         .confirmationDialog(
             "Clear entire chat history?",
             isPresented: $showClearConfirmation,
@@ -42,74 +60,214 @@ public struct ChatRoomView: View {
             }
             Button("Cancel", role: .cancel) {}
         } message: {
-            Text("This will permanently remove the local chat history from your session.")
+            Text("This will permanently remove the chat history from your local session. This cannot be undone.")
         }
     }
 
-    // MARK: - Header View
+    // MARK: - Header Bar
 
     private var chatHeaderView: some View {
         HStack(spacing: 12) {
-            // Icon & Room Name
-            HStack(spacing: 8) {
-                Image(systemName: "bubble.left.and.bubble.right.fill")
-                    .font(.system(size: 14, weight: .semibold))
-                    .foregroundColor(.cyan)
+            // Room Title and Presence Indicator
+            HStack(spacing: 10) {
+                ZStack {
+                    RoundedRectangle(cornerRadius: 7, style: .continuous)
+                        .fill(Color.accentColor.gradient)
+                        .frame(width: 28, height: 28)
 
-                Text("Local Subnet Chat")
-                    .font(.system(size: 13, weight: .bold))
-                    .foregroundColor(.white)
+                    Image(systemName: "bubble.left.and.bubble.right.fill")
+                        .font(.system(size: 13, weight: .semibold))
+                        .foregroundColor(.white)
+                }
+
+                VStack(alignment: .leading, spacing: 1) {
+                    HStack(spacing: 6) {
+                        Text("Subnet Chat")
+                            .font(.system(size: 13, weight: .semibold))
+                            .foregroundColor(.primary)
+
+                        // Online peers status pill
+                        let peerCount = chatManager.networkManager?.peers.count ?? 0
+                        Button {
+                            showPeersPopover.toggle()
+                        } label: {
+                            HStack(spacing: 4) {
+                                Circle()
+                                    .fill(peerCount > 0 ? Color.green : Color.orange)
+                                    .frame(width: 6, height: 6)
+
+                                Text(peerCount > 0 ? "\(peerCount) online" : "Listening...")
+                                    .font(.system(size: 10, weight: .medium))
+                                    .foregroundColor(.secondary)
+                            }
+                            .padding(.horizontal, 7)
+                            .padding(.vertical, 2.5)
+                            .background(Color.primary.opacity(0.06))
+                            .clipShape(Capsule())
+                        }
+                        .buttonStyle(.plain)
+                        .popover(isPresented: $showPeersPopover, arrowEdge: .bottom) {
+                            peersPopoverView
+                        }
+                    }
+
+                    Text("Zero-cloud P2P broadcast channel")
+                        .font(.system(size: 10))
+                        .foregroundColor(.secondary)
+                }
             }
-
-            // Online peers count badge
-            let peerCount = chatManager.networkManager?.peers.count ?? 0
-            HStack(spacing: 5) {
-                Circle()
-                    .fill(peerCount > 0 ? Color.green : Color.orange)
-                    .frame(width: 7, height: 7)
-
-                Text(peerCount > 0 ? "\(peerCount) online" : "Listening...")
-                    .font(.system(size: 11, weight: .medium))
-                    .foregroundColor(.secondary)
-            }
-            .padding(.horizontal, 8)
-            .padding(.vertical, 4)
-            .background(Color.white.opacity(0.06))
-            .clipShape(Capsule())
 
             Spacer()
 
-            // Export to Markdown button
-            Button {
-                exportChat()
-            } label: {
-                Image(systemName: "square.and.arrow.up")
-                    .font(.system(size: 12, weight: .medium))
-                    .foregroundColor(.secondary)
-                    .padding(6)
-                    .background(Color.white.opacity(0.06))
-                    .clipShape(Circle())
-            }
-            .buttonStyle(.plain)
-            .help("Export chat log as Markdown")
+            // Header Toolbar Actions
+            HStack(spacing: 6) {
+                // Search Toggle
+                Button {
+                    withAnimation(.easeInOut(duration: 0.2)) {
+                        isSearchActive.toggle()
+                        if !isSearchActive {
+                            searchQuery = ""
+                        } else {
+                            isSearchFocused = true
+                        }
+                    }
+                } label: {
+                    Image(systemName: isSearchActive ? "magnifyingglass.circle.fill" : "magnifyingglass")
+                        .font(.system(size: 13, weight: .medium))
+                        .foregroundColor(isSearchActive ? .accentColor : .secondary)
+                        .frame(width: 28, height: 28)
+                        .background(Color.primary.opacity(isSearchActive ? 0.08 : 0.04))
+                        .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
+                }
+                .buttonStyle(.plain)
+                .help("Search messages (⌘F)")
 
-            // Clear history button
-            Button {
-                showClearConfirmation = true
-            } label: {
-                Image(systemName: "trash")
-                    .font(.system(size: 12, weight: .medium))
-                    .foregroundColor(.secondary)
-                    .padding(6)
-                    .background(Color.white.opacity(0.06))
-                    .clipShape(Circle())
+                // Export Markdown
+                Button {
+                    exportChat()
+                } label: {
+                    Image(systemName: "square.and.arrow.up")
+                        .font(.system(size: 13, weight: .medium))
+                        .foregroundColor(.secondary)
+                        .frame(width: 28, height: 28)
+                        .background(Color.primary.opacity(0.04))
+                        .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
+                }
+                .buttonStyle(.plain)
+                .help("Export chat log as Markdown")
+
+                // Clear History
+                Button {
+                    showClearConfirmation = true
+                } label: {
+                    Image(systemName: "trash")
+                        .font(.system(size: 13, weight: .medium))
+                        .foregroundColor(.secondary)
+                        .frame(width: 28, height: 28)
+                        .background(Color.primary.opacity(0.04))
+                        .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
+                }
+                .buttonStyle(.plain)
+                .help("Clear chat history")
             }
-            .buttonStyle(.plain)
-            .help("Clear chat history")
+        }
+        .padding(.leading, 78) // Clear standard macOS window traffic lights
+        .padding(.trailing, 16)
+        .padding(.vertical, 10)
+        .frame(height: 52)
+        .background(Color(nsColor: .windowBackgroundColor))
+    }
+
+    // MARK: - Search Bar View
+
+    private var searchBarView: some View {
+        HStack(spacing: 8) {
+            Image(systemName: "magnifyingglass")
+                .font(.system(size: 12))
+                .foregroundColor(.secondary)
+
+            TextField("Filter messages by text, sender, or language...", text: $searchQuery)
+                .textFieldStyle(.plain)
+                .font(.system(size: 12))
+                .focused($isSearchFocused)
+
+            if !searchQuery.isEmpty {
+                Button {
+                    searchQuery = ""
+                } label: {
+                    Image(systemName: "xmark.circle.fill")
+                        .font(.system(size: 12))
+                        .foregroundColor(.secondary)
+                }
+                .buttonStyle(.plain)
+
+                Text("\(filteredMessages.count) found")
+                    .font(.system(size: 10, weight: .medium))
+                    .foregroundColor(.secondary)
+            }
+
+            Button("Done") {
+                withAnimation(.easeInOut(duration: 0.2)) {
+                    isSearchActive = false
+                    searchQuery = ""
+                }
+            }
+            .buttonStyle(.borderless)
+            .font(.system(size: 11, weight: .medium))
         }
         .padding(.horizontal, 16)
-        .padding(.vertical, 12)
-        .background(Color(red: 0.13, green: 0.13, blue: 0.16))
+        .padding(.vertical, 7)
+        .background(Color(nsColor: .controlBackgroundColor))
+    }
+
+    // MARK: - Online Peers Popover View
+
+    private var peersPopoverView: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack {
+                Text("Discovered Peers")
+                    .font(.system(size: 12, weight: .bold))
+                Spacer()
+                Text("\(chatManager.networkManager?.peers.count ?? 0) active")
+                    .font(.system(size: 11))
+                    .foregroundColor(.secondary)
+            }
+            .padding(.bottom, 2)
+
+            Divider()
+
+            let peers = chatManager.networkManager?.peers ?? []
+            if peers.isEmpty {
+                Text("No peers detected on local subnet yet.")
+                    .font(.system(size: 11))
+                    .foregroundColor(.secondary)
+                    .frame(width: 220, alignment: .leading)
+                    .padding(.vertical, 8)
+            } else {
+                VStack(spacing: 6) {
+                    ForEach(peers) { peer in
+                        HStack(spacing: 8) {
+                            Circle()
+                                .fill(Color.green)
+                                .frame(width: 6, height: 6)
+
+                            VStack(alignment: .leading, spacing: 1) {
+                                Text(peer.name)
+                                    .font(.system(size: 12, weight: .medium))
+                                    .lineLimit(1)
+                                Text(peer.status)
+                                    .font(.system(size: 10))
+                                    .foregroundColor(.secondary)
+                                    .lineLimit(1)
+                            }
+                            Spacer()
+                        }
+                    }
+                }
+                .frame(width: 220)
+            }
+        }
+        .padding(12)
     }
 
     // MARK: - Messages Feed
@@ -117,25 +275,48 @@ public struct ChatRoomView: View {
     private var messagesFeedView: some View {
         ScrollViewReader { proxy in
             ScrollView {
-                if chatManager.messages.isEmpty {
-                    emptyStateView
+                if filteredMessages.isEmpty {
+                    if !searchQuery.isEmpty {
+                        searchEmptyStateView
+                    } else {
+                        emptyStateView
+                    }
                 } else {
-                    LazyVStack(spacing: 14) {
-                        ForEach(chatManager.messages) { message in
-                            ChatMessageRow(
-                                message: message,
-                                isLocal: isLocalMessage(message)
-                            )
-                            .id(message.id)
+                    LazyVStack(spacing: 4) {
+                        ForEach(Array(filteredMessages.enumerated()), id: \.element.id) { index, message in
+                            let isLocal = isLocalMessage(message)
+                            let previousMessage = index > 0 ? filteredMessages[index - 1] : nil
+                            let showDateDivider = previousMessage == nil || !message.isSameDay(as: previousMessage!.timestamp)
+                            let isConsecutive = previousMessage != nil && message.isConsecutive(after: previousMessage!)
+
+                            VStack(spacing: 4) {
+                                if showDateDivider {
+                                    dateDividerView(dateString: message.relativeDateHeader)
+                                        .padding(.top, index == 0 ? 8 : 16)
+                                        .padding(.bottom, 6)
+                                }
+
+                                ChatMessageRow(
+                                    message: message,
+                                    isLocal: isLocal,
+                                    isConsecutive: isConsecutive && !showDateDivider,
+                                    onDelete: {
+                                        chatManager.deleteMessage(id: message.id)
+                                    }
+                                )
+                                .id(message.id)
+                                .padding(.top, isConsecutive && !showDateDivider ? 1 : 10)
+                            }
                         }
                     }
                     .padding(.horizontal, 16)
-                    .padding(.vertical, 16)
+                    .padding(.vertical, 14)
                 }
             }
+            .background(Color(nsColor: .windowBackgroundColor))
             .onChange(of: chatManager.messages.count) { _, _ in
                 if let last = chatManager.messages.last {
-                    withAnimation(.easeOut(duration: 0.25)) {
+                    withAnimation(.easeOut(duration: 0.2)) {
                         proxy.scrollTo(last.id, anchor: .bottom)
                     }
                 }
@@ -148,132 +329,284 @@ public struct ChatRoomView: View {
         }
     }
 
+    // MARK: - Date Divider
+
+    private func dateDividerView(dateString: String) -> some View {
+        HStack(spacing: 12) {
+            Rectangle()
+                .fill(Color(nsColor: .separatorColor).opacity(0.5))
+                .frame(height: 1)
+
+            Text(dateString)
+                .font(.system(size: 11, weight: .medium))
+                .foregroundColor(.secondary)
+                .padding(.horizontal, 10)
+                .padding(.vertical, 3)
+                .background(Color(nsColor: .controlBackgroundColor))
+                .clipShape(Capsule())
+                .overlay(
+                    Capsule().stroke(Color(nsColor: .separatorColor).opacity(0.5), lineWidth: 0.5)
+                )
+
+            Rectangle()
+                .fill(Color(nsColor: .separatorColor).opacity(0.5))
+                .frame(height: 1)
+        }
+    }
+
+    // MARK: - Empty States
+
     private var emptyStateView: some View {
-        VStack(spacing: 12) {
-            Image(systemName: "message.and.waveform")
-                .font(.system(size: 38))
-                .foregroundColor(.cyan.opacity(0.6))
-                .padding(.bottom, 4)
+        VStack(spacing: 14) {
+            ZStack {
+                Circle()
+                    .fill(Color.accentColor.opacity(0.12))
+                    .frame(width: 64, height: 64)
 
-            Text("No Messages Yet")
-                .font(.system(size: 14, weight: .semibold))
-                .foregroundColor(.white)
+                Image(systemName: "bubble.left.and.bubble.right.fill")
+                    .font(.system(size: 26))
+                    .foregroundColor(.accentColor)
+            }
+            .padding(.bottom, 4)
 
-            Text("Messages and code snippets sent here will broadcast to all LocalPing peers on your local network simultaneously.")
+            Text("Subnet Chat Room")
+                .font(.system(size: 15, weight: .semibold))
+                .foregroundColor(.primary)
+
+            Text("Broadcast messages and formatted code snippets directly to all discovered local devices over zero-cloud Bonjour.")
                 .font(.system(size: 12))
                 .foregroundColor(.secondary)
                 .multilineTextAlignment(.center)
-                .frame(maxWidth: 340)
+                .frame(maxWidth: 360)
+                .lineSpacing(2)
+
+            // Quick suggestion chips
+            HStack(spacing: 8) {
+                quickPromptChip(label: "👋 Say Hello", prompt: "Hello everyone! 👋")
+                quickPromptChip(label: "💻 Share Snippet", snippetMode: true)
+                quickPasteClipboardChip()
+            }
+            .padding(.top, 6)
         }
-        .frame(maxWidth: .infinity, minHeight: 280)
+        .frame(maxWidth: .infinity, minHeight: 300)
         .padding()
     }
 
-    // MARK: - Input Bar
+    private var searchEmptyStateView: some View {
+        VStack(spacing: 10) {
+            Image(systemName: "magnifyingglass")
+                .font(.system(size: 30))
+                .foregroundColor(.secondary.opacity(0.5))
+                .padding(.bottom, 4)
 
-    private var chatInputBarView: some View {
-        VStack(spacing: 8) {
-            // Optional snippet language selector bar
+            Text("No Messages Match \"\(searchQuery)\"")
+                .font(.system(size: 13, weight: .semibold))
+                .foregroundColor(.primary)
+
+            Button("Clear Search") {
+                searchQuery = ""
+            }
+            .buttonStyle(.bordered)
+            .controlSize(.small)
+        }
+        .frame(maxWidth: .infinity, minHeight: 240)
+    }
+
+    private func quickPromptChip(label: String, prompt: String = "", snippetMode: Bool = false) -> some View {
+        Button {
+            if snippetMode {
+                isSnippetMode = true
+                isInputFocused = true
+            } else {
+                inputText = prompt
+                isInputFocused = true
+            }
+        } label: {
+            Text(label)
+                .font(.system(size: 11, weight: .medium))
+                .padding(.horizontal, 10)
+                .padding(.vertical, 5)
+                .background(Color(nsColor: .controlBackgroundColor))
+                .clipShape(Capsule())
+                .overlay(
+                    Capsule().stroke(Color(nsColor: .separatorColor).opacity(0.6), lineWidth: 0.5)
+                )
+        }
+        .buttonStyle(.plain)
+    }
+
+    private func quickPasteClipboardChip() -> some View {
+        Button {
+            if let string = NSPasteboard.general.string(forType: .string), !string.isEmpty {
+                inputText = string
+                if string.contains("\n") || string.contains("{") || string.contains("import") {
+                    isSnippetMode = true
+                }
+                isInputFocused = true
+            }
+        } label: {
+            HStack(spacing: 4) {
+                Image(systemName: "doc.on.clipboard")
+                    .font(.system(size: 10))
+                Text("Paste Clipboard")
+                    .font(.system(size: 11, weight: .medium))
+            }
+            .padding(.horizontal, 10)
+            .padding(.vertical, 5)
+            .background(Color(nsColor: .controlBackgroundColor))
+            .clipShape(Capsule())
+            .overlay(
+                Capsule().stroke(Color(nsColor: .separatorColor).opacity(0.6), lineWidth: 0.5)
+            )
+        }
+        .buttonStyle(.plain)
+    }
+
+    // MARK: - Composer Input Bar
+
+    private var chatComposerView: some View {
+        VStack(spacing: 0) {
+            // Snippet Mode Header Toolbar
             if isSnippetMode {
                 HStack(spacing: 8) {
-                    Image(systemName: "curlybraces")
-                        .font(.system(size: 11, weight: .bold))
-                        .foregroundColor(.cyan)
+                    HStack(spacing: 5) {
+                        Image(systemName: "curlybraces")
+                            .font(.system(size: 11, weight: .bold))
+                            .foregroundColor(selectedLanguage.badgeColor)
 
-                    Text("Code Snippet Mode:")
-                        .font(.system(size: 11, weight: .semibold))
-                        .foregroundColor(.white)
+                        Text("Snippet Language:")
+                            .font(.system(size: 11, weight: .medium))
+                            .foregroundColor(.secondary)
 
-                    Picker("", selection: $selectedLanguage) {
-                        ForEach(supportedLanguages, id: \.self) { lang in
-                            Text(lang.uppercased()).tag(lang)
+                        Picker("", selection: $selectedLanguage) {
+                            ForEach(SyntaxLanguage.allCases, id: \.self) { lang in
+                                Text(lang.displayName).tag(lang)
+                            }
                         }
+                        .pickerStyle(.menu)
+                        .frame(width: 140)
                     }
-                    .pickerStyle(.menu)
-                    .frame(width: 110)
 
                     Spacer()
+
+                    Text("Press ⌘Return to send")
+                        .font(.system(size: 10))
+                        .foregroundColor(.secondary)
 
                     Button {
                         isSnippetMode = false
                     } label: {
-                        Image(systemName: "xmark")
-                            .font(.system(size: 10, weight: .bold))
+                        Image(systemName: "xmark.circle.fill")
+                            .font(.system(size: 12))
                             .foregroundColor(.secondary)
-                            .padding(4)
                     }
                     .buttonStyle(.plain)
+                    .help("Exit Snippet Mode")
                 }
                 .padding(.horizontal, 12)
                 .padding(.vertical, 6)
-                .background(Color.cyan.opacity(0.12))
-                .clipShape(RoundedRectangle(cornerRadius: 6))
+                .background(Color(nsColor: .controlBackgroundColor))
+                .clipShape(UnevenRoundedRectangle(topLeadingRadius: 10, bottomLeadingRadius: 0, bottomTrailingRadius: 0, topTrailingRadius: 10, style: .continuous))
+                .overlay(
+                    Rectangle()
+                        .frame(height: 1)
+                        .foregroundColor(Color(nsColor: .separatorColor).opacity(0.5)),
+                    alignment: .bottom
+                )
             }
 
-            // Input field and send button
+            // Input card
             HStack(alignment: .bottom, spacing: 8) {
                 // Snippet Mode Toggle Button
                 Button {
-                    isSnippetMode.toggle()
+                    withAnimation(.easeInOut(duration: 0.15)) {
+                        isSnippetMode.toggle()
+                    }
                 } label: {
                     Image(systemName: isSnippetMode ? "curlybraces.square.fill" : "curlybraces")
                         .font(.system(size: 14, weight: .medium))
-                        .foregroundColor(isSnippetMode ? .cyan : .secondary)
-                        .padding(7)
-                        .background(Color.white.opacity(isSnippetMode ? 0.12 : 0.05))
-                        .clipShape(RoundedRectangle(cornerRadius: 7))
+                        .foregroundColor(isSnippetMode ? .accentColor : .secondary)
+                        .frame(width: 28, height: 28)
+                        .background(isSnippetMode ? Color.accentColor.opacity(0.12) : Color.primary.opacity(0.04))
+                        .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
                 }
                 .buttonStyle(.plain)
-                .help(isSnippetMode ? "Exit snippet mode" : "Format as code snippet")
+                .help(isSnippetMode ? "Exit snippet mode" : "Format message as code snippet")
 
-                // Multiline / dynamic text field
-                TextEditor(text: $inputText)
-                    .font(isSnippetMode ? .system(size: 12, design: .monospaced) : .system(size: 13))
-                    .foregroundColor(.white)
-                    .scrollContentBackground(.hidden)
-                    .background(Color.white.opacity(0.06))
-                    .clipShape(RoundedRectangle(cornerRadius: 8))
-                    .frame(minHeight: isSnippetMode ? 70 : 36, maxHeight: 120)
-                    .focused($isInputFocused)
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 8)
-                            .stroke(Color.white.opacity(0.12), lineWidth: 1)
-                    )
-                    .overlay(alignment: .topLeading) {
-                        if inputText.isEmpty {
-                            Text(isSnippetMode ? "Paste or write code snippet..." : "Type a message... (Return to send, Shift+Return for newline)")
-                                .font(.system(size: 12))
-                                .foregroundColor(.secondary.opacity(0.7))
-                                .padding(.horizontal, 8)
-                                .padding(.vertical, 9)
-                                .allowsHitTesting(false)
-                        }
+                // Expanding Text Field
+                ZStack(alignment: .topLeading) {
+                    if inputText.isEmpty {
+                        Text(isSnippetMode ? "Paste or write code... (⌘Return to send)" : "Message subnet... (Return to send, ⇧Return for newline)")
+                            .font(isSnippetMode ? .system(size: 12, design: .monospaced) : .system(size: 13))
+                            .foregroundColor(.secondary.opacity(0.7))
+                            .padding(.horizontal, 4)
+                            .padding(.vertical, 6)
+                            .allowsHitTesting(false)
                     }
-                    .onKeyPress(.return, phases: .down) { press in
-                        if press.modifiers.contains(.shift) {
-                            return .ignored
-                        } else {
-                            sendMessage()
-                            return .handled
+
+                    TextEditor(text: $inputText)
+                        .font(isSnippetMode ? .system(size: 12, design: .monospaced) : .system(size: 13))
+                        .scrollContentBackground(.hidden)
+                        .frame(minHeight: isSnippetMode ? 72 : 32, maxHeight: 130)
+                        .focused($isInputFocused)
+                        .onKeyPress(.return, phases: .down) { press in
+                            if isSnippetMode {
+                                // In code snippet mode, Cmd+Return sends, Return makes a newline
+                                if press.modifiers.contains(.command) {
+                                    sendMessage()
+                                    return .handled
+                                }
+                                return .ignored
+                            } else {
+                                // In normal text mode, Return sends, Shift+Return makes a newline
+                                if press.modifiers.contains(.shift) || press.modifiers.contains(.option) {
+                                    return .ignored
+                                } else {
+                                    sendMessage()
+                                    return .handled
+                                }
+                            }
                         }
-                    }
+                }
 
                 // Send Button
                 Button {
                     sendMessage()
                 } label: {
-                    Image(systemName: "arrow.up.circle.fill")
-                        .font(.system(size: 26))
-                        .foregroundColor(inputText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? .secondary.opacity(0.4) : .cyan)
+                    ZStack {
+                        Circle()
+                            .fill(canSend ? Color.accentColor : Color.primary.opacity(0.08))
+                            .frame(width: 28, height: 28)
+
+                        Image(systemName: "arrow.up")
+                            .font(.system(size: 12, weight: .bold))
+                            .foregroundColor(canSend ? .white : .secondary.opacity(0.5))
+                    }
                 }
                 .buttonStyle(.plain)
-                .disabled(inputText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
-                .help("Send message to subnet")
+                .disabled(!canSend)
+                .help("Send broadcast message")
             }
+            .padding(.horizontal, 10)
+            .padding(.vertical, 8)
+            .background(Color(nsColor: .controlBackgroundColor))
+            .clipShape(
+                UnevenRoundedRectangle(
+                    topLeadingRadius: isSnippetMode ? 0 : 10,
+                    bottomLeadingRadius: 10,
+                    bottomTrailingRadius: 10,
+                    topTrailingRadius: isSnippetMode ? 0 : 10,
+                    style: .continuous
+                )
+            )
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 12)
-        .background(Color(red: 0.13, green: 0.13, blue: 0.16))
+        .background(Color(nsColor: .windowBackgroundColor))
+    }
+
+    private var canSend: Bool {
+        !inputText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
     }
 
     // MARK: - Helpers
@@ -290,8 +623,10 @@ public struct ChatRoomView: View {
         chatManager.sendMessage(
             content: text,
             isSnippet: isSnippetMode,
-            snippetLanguage: isSnippetMode ? selectedLanguage : nil
+            snippetLanguage: isSnippetMode ? selectedLanguage.rawValue : nil
         )
+
+        NSSound(named: "Tink")?.play()
 
         inputText = ""
         isSnippetMode = false
@@ -319,56 +654,74 @@ public struct ChatRoomView: View {
 struct ChatMessageRow: View {
     let message: ChatMessage
     let isLocal: Bool
+    let isConsecutive: Bool
+    let onDelete: () -> Void
+
+    @State private var isHovered: Bool = false
+    @State private var hasCopied: Bool = false
 
     var body: some View {
-        HStack(alignment: .top, spacing: 10) {
+        HStack(alignment: .top, spacing: 8) {
             if isLocal {
-                Spacer(minLength: 40)
+                Spacer(minLength: 48)
+
+                // Quick hover actions on local messages
+                if isHovered {
+                    hoverActionButtons
+                        .transition(.opacity)
+                }
             } else {
-                // Peer Avatar
-                Circle()
-                    .fill(Color(hex: message.avatarColorHex))
-                    .frame(width: 30, height: 30)
-                    .overlay(
-                        Text(message.avatarInitials)
-                            .font(.system(size: 11, weight: .bold))
-                            .foregroundColor(.black)
-                    )
+                // Peer Avatar (aligned with leading edge; hidden on consecutive cluster messages)
+                if !isConsecutive {
+                    Circle()
+                        .fill(avatarGradient)
+                        .frame(width: 28, height: 28)
+                        .overlay(
+                            Text(message.avatarInitials)
+                                .font(.system(size: 11, weight: .bold, design: .rounded))
+                                .foregroundColor(.white)
+                        )
+                        .overlay(
+                            Circle().stroke(Color.primary.opacity(0.08), lineWidth: 1)
+                        )
+                } else {
+                    Color.clear
+                        .frame(width: 28, height: 28)
+                }
             }
 
-            VStack(alignment: isLocal ? .trailing : .leading, spacing: 4) {
-                // Sender name and timestamp
-                HStack(spacing: 6) {
-                    if !isLocal {
-                        Text(message.senderName)
-                            .font(.system(size: 11, weight: .bold))
-                            .foregroundColor(Color(hex: message.avatarColorHex))
-                    }
+            VStack(alignment: isLocal ? .trailing : .leading, spacing: 3) {
+                // Sender name and timestamp on first message of cluster
+                if !isConsecutive {
+                    HStack(spacing: 6) {
+                        if !isLocal {
+                            Text(message.senderName)
+                                .font(.system(size: 11, weight: .semibold))
+                                .foregroundColor(Color(hex: message.avatarColorHex))
+                        }
 
-                    Text(message.formattedTime)
-                        .font(.system(size: 10))
-                        .foregroundColor(.secondary)
+                        Text(message.formattedTime)
+                            .font(.system(size: 10))
+                            .foregroundColor(.secondary)
+                    }
+                    .padding(.horizontal, 2)
                 }
 
-                // Message bubble containing text and/or code snippets
-                VStack(alignment: isLocal ? .trailing : .leading, spacing: 6) {
+                // Message Content (parsed segments into text bubbles and code snippet cards)
+                VStack(alignment: isLocal ? .trailing : .leading, spacing: 4) {
                     ForEach(message.parsedSegments) { segment in
                         switch segment {
                         case .text(_, let text):
                             Text(LocalizedStringKey(text))
                                 .font(.system(size: 13))
-                                .foregroundColor(.white)
+                                .foregroundColor(isLocal ? .white : .primary)
                                 .textSelection(.enabled)
                                 .padding(.horizontal, 12)
-                                .padding(.vertical, 8)
-                                .background(
-                                    isLocal ?
-                                    Color.cyan.opacity(0.85) :
-                                    Color(red: 0.18, green: 0.18, blue: 0.22)
-                                )
-                                .clipShape(
-                                    RoundedRectangle(cornerRadius: 14)
-                                )
+                                .padding(.vertical, 7)
+                                .background(bubbleBackground)
+                                .clipShape(bubbleShape)
+                                .overlay(bubbleBorder)
+                                .shadow(color: Color.black.opacity(isLocal ? 0.08 : 0.03), radius: 2, y: 1)
 
                         case .code(_, let code, let language):
                             CodeSnippetView(code: code, language: language)
@@ -376,11 +729,143 @@ struct ChatMessageRow: View {
                     }
                 }
             }
+            .contextMenu {
+                Button {
+                    copyMessageContent()
+                } label: {
+                    Label("Copy Message Text", systemImage: "doc.on.doc")
+                }
+
+                if message.isSnippet || message.parsedSegments.contains(where: { if case .code = $0 { return true } else { return false } }) {
+                    Button {
+                        copyOnlyCode()
+                    } label: {
+                        Label("Copy Code", systemImage: "curlybraces")
+                    }
+                }
+
+                Divider()
+
+                Button(role: .destructive) {
+                    onDelete()
+                } label: {
+                    Label("Delete Message", systemImage: "trash")
+                }
+            }
 
             if !isLocal {
-                Spacer(minLength: 40)
+                // Quick hover actions on incoming messages
+                if isHovered {
+                    hoverActionButtons
+                        .transition(.opacity)
+                }
+
+                Spacer(minLength: 48)
             }
         }
+        .onHover { isHovered = $0 }
+    }
+
+    // MARK: - Bubble Styling
+
+    @ViewBuilder
+    private var bubbleBackground: some View {
+        if isLocal {
+            LinearGradient(
+                colors: [Color.accentColor, Color.accentColor.opacity(0.92)],
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
+        } else {
+            Color(nsColor: .controlBackgroundColor)
+        }
+    }
+
+    private var bubbleShape: some Shape {
+        UnevenRoundedRectangle(
+            topLeadingRadius: 14,
+            bottomLeadingRadius: isLocal ? 14 : (isConsecutive ? 6 : 3),
+            bottomTrailingRadius: isLocal ? (isConsecutive ? 6 : 3) : 14,
+            topTrailingRadius: 14,
+            style: .continuous
+        )
+    }
+
+    @ViewBuilder
+    private var bubbleBorder: some View {
+        if !isLocal {
+            bubbleShape
+                .stroke(Color(nsColor: .separatorColor).opacity(0.5), lineWidth: 0.5)
+        }
+    }
+
+    private var avatarGradient: LinearGradient {
+        let base = Color(hex: message.avatarColorHex)
+        return LinearGradient(
+            colors: [base, base.opacity(0.8)],
+            startPoint: .topLeading,
+            endPoint: .bottomTrailing
+        )
+    }
+
+    // MARK: - Hover Actions
+
+    private var hoverActionButtons: some View {
+        HStack(spacing: 4) {
+            Button {
+                copyMessageContent()
+            } label: {
+                Image(systemName: hasCopied ? "checkmark" : "doc.on.doc")
+                    .font(.system(size: 10, weight: .medium))
+                    .foregroundColor(hasCopied ? .green : .secondary)
+                    .frame(width: 22, height: 22)
+                    .background(Color(nsColor: .controlBackgroundColor))
+                    .clipShape(Circle())
+                    .overlay(Circle().stroke(Color(nsColor: .separatorColor).opacity(0.4), lineWidth: 0.5))
+            }
+            .buttonStyle(.plain)
+            .help("Copy text")
+
+            Button {
+                onDelete()
+            } label: {
+                Image(systemName: "trash")
+                    .font(.system(size: 10, weight: .medium))
+                    .foregroundColor(.secondary)
+                    .frame(width: 22, height: 22)
+                    .background(Color(nsColor: .controlBackgroundColor))
+                    .clipShape(Circle())
+                    .overlay(Circle().stroke(Color(nsColor: .separatorColor).opacity(0.4), lineWidth: 0.5))
+            }
+            .buttonStyle(.plain)
+            .help("Delete message")
+        }
+        .padding(.top, 2)
+    }
+
+    private func copyMessageContent() {
+        NSPasteboard.general.clearContents()
+        NSPasteboard.general.setString(message.content, forType: .string)
+        withAnimation(.spring(response: 0.25)) {
+            hasCopied = true
+        }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.8) {
+            withAnimation(.easeOut) {
+                hasCopied = false
+            }
+        }
+    }
+
+    private func copyOnlyCode() {
+        var codeStrings: [String] = []
+        for segment in message.parsedSegments {
+            if case .code(_, let code, _) = segment {
+                codeStrings.append(code)
+            }
+        }
+        let joined = codeStrings.joined(separator: "\n\n")
+        NSPasteboard.general.clearContents()
+        NSPasteboard.general.setString(joined, forType: .string)
     }
 }
 
@@ -392,20 +877,40 @@ struct CodeSnippetView: View {
 
     @State private var hasCopied: Bool = false
 
+    private var syntaxLanguage: SyntaxLanguage {
+        SyntaxLanguage.match(language)
+    }
+
+    private var lines: [String] {
+        code.components(separatedBy: "\n")
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            // Snippet header bar
+            // Snippet Header Bar
             HStack(spacing: 8) {
-                Image(systemName: "chevron.left.forwardslash.chevron.right")
-                    .font(.system(size: 10, weight: .bold))
-                    .foregroundColor(.cyan)
+                // Language badge with distinct colored dot
+                HStack(spacing: 5) {
+                    Circle()
+                        .fill(syntaxLanguage.badgeColor)
+                        .frame(width: 7, height: 7)
 
-                Text((language ?? "CODE").uppercased())
-                    .font(.system(size: 10, weight: .bold, design: .monospaced))
+                    Text(syntaxLanguage.displayName.uppercased())
+                        .font(.system(size: 10, weight: .bold, design: .monospaced))
+                        .foregroundColor(.primary)
+                }
+
+                Text("•")
+                    .font(.system(size: 10))
+                    .foregroundColor(.secondary.opacity(0.5))
+
+                Text("\(lines.count) \(lines.count == 1 ? "line" : "lines")")
+                    .font(.system(size: 10, weight: .medium))
                     .foregroundColor(.secondary)
 
                 Spacer()
 
+                // Copy Code Action Pill
                 Button {
                     copyCode()
                 } label: {
@@ -416,39 +921,82 @@ struct CodeSnippetView: View {
                             .font(.system(size: 10, weight: .medium))
                     }
                     .foregroundColor(hasCopied ? .green : .secondary)
-                    .padding(.horizontal, 7)
+                    .padding(.horizontal, 8)
                     .padding(.vertical, 3)
-                    .background(Color.white.opacity(0.08))
+                    .background(Color.primary.opacity(0.06))
                     .clipShape(Capsule())
                 }
                 .buttonStyle(.plain)
             }
-            .padding(.horizontal, 10)
-            .padding(.vertical, 6)
-            .background(Color(red: 0.14, green: 0.14, blue: 0.17))
+            .padding(.horizontal, 12)
+            .padding(.vertical, 7)
+            .background(Color(nsColor: .controlBackgroundColor))
+            .overlay(
+                Rectangle()
+                    .frame(height: 1)
+                    .foregroundColor(Color(nsColor: .separatorColor).opacity(0.4)),
+                alignment: .bottom
+            )
 
-            // Monospaced code text
+            // Syntax-highlighted code editor body with line numbers
             ScrollView(.horizontal, showsIndicators: false) {
-                Text(code)
-                    .font(.system(size: 11, design: .monospaced))
-                    .foregroundColor(Color(red: 0.90, green: 0.92, blue: 0.95))
-                    .padding(10)
-                    .textSelection(.enabled)
+                VStack(alignment: .leading, spacing: 2) {
+                    ForEach(Array(lines.enumerated()), id: \.offset) { index, line in
+                        HStack(alignment: .top, spacing: 12) {
+                            Text("\(index + 1)")
+                                .font(.system(size: 11, design: .monospaced))
+                                .foregroundColor(.secondary.opacity(0.45))
+                                .frame(minWidth: 20, alignment: .trailing)
+
+                            highlightedLine(line, language: syntaxLanguage)
+                                .font(.system(size: 11, design: .monospaced))
+                                .textSelection(.enabled)
+                        }
+                    }
+                }
+                .padding(.horizontal, 12)
+                .padding(.vertical, 10)
+            }
+            .background(Color(nsColor: .textBackgroundColor).opacity(0.35))
+        }
+        .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 8, style: .continuous)
+                .stroke(Color(nsColor: .separatorColor).opacity(0.6), lineWidth: 0.5)
+        )
+        .frame(minWidth: 320, maxWidth: 520)
+    }
+
+    private func highlightedLine(_ line: String, language: SyntaxLanguage) -> Text {
+        let tokens = SimpleSyntaxHighlighter.shared.highlightLine(line, language: language)
+        guard !tokens.isEmpty else { return Text(line) }
+
+        var result = Text("")
+        for token in tokens {
+            switch token.type {
+            case .keyword:
+                result = result + Text(token.text).foregroundColor(Color.purple).bold()
+            case .type:
+                result = result + Text(token.text).foregroundColor(Color.teal).bold()
+            case .string:
+                result = result + Text(token.text).foregroundColor(Color.orange)
+            case .number:
+                result = result + Text(token.text).foregroundColor(Color(red: 0.85, green: 0.65, blue: 0.15))
+            case .comment:
+                result = result + Text(token.text).foregroundColor(Color.secondary).italic()
+            case .boolean:
+                result = result + Text(token.text).foregroundColor(Color.blue).bold()
+            case .plain:
+                result = result + Text(token.text).foregroundColor(Color.primary)
             }
         }
-        .background(Color(red: 0.10, green: 0.10, blue: 0.13))
-        .clipShape(RoundedRectangle(cornerRadius: 8))
-        .overlay(
-            RoundedRectangle(cornerRadius: 8)
-                .stroke(Color.white.opacity(0.12), lineWidth: 1)
-        )
-        .frame(maxWidth: 420)
+        return result
     }
 
     private func copyCode() {
         NSPasteboard.general.clearContents()
         NSPasteboard.general.setString(code, forType: .string)
-        withAnimation(.spring(response: 0.3)) {
+        withAnimation(.spring(response: 0.25)) {
             hasCopied = true
         }
         DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {

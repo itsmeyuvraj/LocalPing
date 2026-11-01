@@ -91,6 +91,11 @@ public final class ChatRoomManager: @unchecked Sendable {
 
     // MARK: - Actions
 
+    public func deleteMessage(id: UUID) {
+        messages.removeAll { $0.id == id }
+        saveHistory()
+    }
+
     public func clearHistory() {
         messages.removeAll()
         saveHistory()
