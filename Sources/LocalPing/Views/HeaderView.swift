@@ -146,23 +146,27 @@ struct HeaderView: View {
                         .font(.system(size: 11, weight: .medium))
                         .foregroundColor(.secondary)
                         .rotationEffect(.degrees(isSpinning ? 360 : 0))
-                        .padding(5)
+                        .frame(width: 26, height: 26)
                         .background(Color.primary.opacity(0.05))
                         .clipShape(Circle())
+                        .contentShape(Circle())
                 }
                 .buttonStyle(.plain)
                 .help("Rescan network")
 
                 // Pin Window Button
                 Button {
-                    isPinned.toggle()
+                    withAnimation(.spring(response: 0.25, dampingFraction: 0.7)) {
+                        isPinned.toggle()
+                    }
                 } label: {
                     Image(systemName: isPinned ? "pin.fill" : "pin")
-                        .font(.system(size: 11, weight: .medium))
+                        .font(.system(size: 11, weight: .semibold))
                         .foregroundColor(isPinned ? .accentColor : .secondary)
-                        .padding(5)
-                        .background(isPinned ? Color.accentColor.opacity(0.15) : Color.primary.opacity(0.05))
+                        .frame(width: 26, height: 26)
+                        .background(isPinned ? Color.accentColor.opacity(0.18) : Color.primary.opacity(0.05))
                         .clipShape(Circle())
+                        .contentShape(Circle())
                 }
                 .buttonStyle(.plain)
                 .help(isPinned ? "Pinned: Window stays open" : "Pin window open")
@@ -174,9 +178,10 @@ struct HeaderView: View {
                     Image(systemName: "xmark")
                         .font(.system(size: 10, weight: .bold))
                         .foregroundColor(.secondary)
-                        .padding(5)
+                        .frame(width: 26, height: 26)
                         .background(Color.primary.opacity(0.05))
                         .clipShape(Circle())
+                        .contentShape(Circle())
                 }
                 .buttonStyle(.plain)
                 .help("Close popover (Esc)")

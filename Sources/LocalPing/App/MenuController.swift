@@ -2,18 +2,34 @@ import AppKit
 import SwiftUI
 import Observation
 
+// Custom hosting controller that enables first-click mouse activation
+final class FirstMouseHostingController<Content: View>: NSHostingController<Content> {
+    override func loadView() {
+        let hostingView = FirstMouseHostingView(rootView: rootView)
+        self.view = hostingView
+    }
+}
+
+final class FirstMouseHostingView<Content: View>: NSHostingView<Content> {
+    override func acceptsFirstMouse(for event: NSEvent?) -> Bool {
+        return true
+    }
+}
+
 @MainActor
+@Observable
 public final class MenuController: NSObject {
-    private var statusItem: NSStatusItem!
-    private var popover: NSPopover!
-    public let networkManager: NetworkManager
+    @ObservationIgnored private var statusItem: NSStatusItem!
+    @ObservationIgnored private var popover: NSPopover!
+    @ObservationIgnored public let networkManager: NetworkManager
+
     public var isPinned: Bool = true {
         didSet {
             updateEventMonitor()
         }
     }
 
-    private var globalEventMonitor: Any?
+    @ObservationIgnored private var globalEventMonitor: Any?
 
     public init(networkManager: NetworkManager) {
         self.networkManager = networkManager
@@ -53,7 +69,7 @@ public final class MenuController: NSObject {
                 self?.closePopover()
             }
         )
-        popover.contentViewController = NSHostingController(rootView: rootView)
+        popover.contentViewController = FirstMouseHostingController(rootView: rootView)
     }
 
     private func observeState() {
